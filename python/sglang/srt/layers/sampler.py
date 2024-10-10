@@ -1,5 +1,6 @@
 import logging
-from typing import Union
+import random
+from typing import Union, List
 
 import torch
 from torch import nn
@@ -7,7 +8,7 @@ from torch import nn
 from sglang.srt.layers.logits_processor import LogitsProcessorOutput
 from sglang.srt.managers.schedule_batch import global_server_args_dict
 from sglang.srt.sampling.sampling_batch_info import SamplingBatchInfo
-from sglang.srt.utils import is_flashinfer_available
+from sglang.srt.utils import is_flashinfer_available, seed_everything
 
 if is_flashinfer_available():
     from flashinfer.sampling import (
@@ -47,9 +48,22 @@ class Sampler(nn.Module):
             batch_next_token_ids = torch.argmax(probs, -1)
         elif global_server_args_dict["sampling_backend"] == "flashinfer":
             max_top_k_round, batch_size = 32, probs.shape[0]
-            uniform_samples = torch.rand(
-                (max_top_k_round, batch_size), device=probs.device
-            )
+
+            seed = refresh_seed(sampling_info.seed)
+            if not seed:
+                uniform_samples = torch.rand(
+                    (max_top_k_round, batch_size), device=probs.device
+                )
+
+            else:
+                uniform_samples = torch.cat(
+                    list(
+                        map(
+                            lambda x: get_uniform_sample_for_single_sample(x, max_top_k_round, probs.device),
+                            seed
+                        )
+                    ), dim=-1)
+
             if sampling_info.need_min_p_sampling:
                 probs = top_k_renorm_prob(probs, sampling_info.top_ks)
                 probs = top_p_renorm_prob(probs, sampling_info.top_ps)
@@ -71,7 +85,7 @@ class Sampler(nn.Module):
         elif global_server_args_dict["sampling_backend"] == "pytorch":
             # Here we provide a slower fallback implementation.
             batch_next_token_ids = top_k_top_p_min_p_sampling_from_probs_torch(
-                probs, sampling_info.top_ks, sampling_info.top_ps, sampling_info.min_ps
+                probs, sampling_info.top_ks, sampling_info.top_ps, sampling_info.min_ps, sampling_info.seed
             )
         else:
             raise ValueError(
@@ -80,12 +94,26 @@ class Sampler(nn.Module):
 
         return batch_next_token_ids
 
+def refresh_seed(seed: List[int]) -> List[int]:
+    if any(seed):
+        return [x if x else random.randint(-2147483648, 2147483647) for x in seed]
+    else:
+        return None
+
+def get_uniform_sample_for_single_sample(seed, max_top_k_round, device):
+    seed_everything(seed)
+    return torch.rand((max_top_k_round, 1), device=device)
+
+def multinomial_for_single_sample(probs_sort, seed):
+    seed_everything(seed)
+    return torch.multinomial(probs_sort, num_samples=1)
 
 def top_k_top_p_min_p_sampling_from_probs_torch(
     probs: torch.Tensor,
     top_ks: torch.Tensor,
     top_ps: torch.Tensor,
     min_ps: torch.Tensor,
+    seed: List[int]
 ):
     """A top-k, top-p and min-p sampling implementation with native pytorch operations."""
     probs_sort, probs_idx = probs.sort(dim=-1, descending=True)
@@ -98,6 +126,19 @@ def top_k_top_p_min_p_sampling_from_probs_torch(
     ] = 0.0
     probs_sort[probs_sort < min_p_thresholds.view(-1, 1)] = 0.0
     probs_sort.div_(probs_sort.max(dim=-1, keepdim=True)[0])
-    sampled_index = torch.multinomial(probs_sort, num_samples=1)
+
+    seed = refresh_seed(seed)
+
+    if seed:
+        probs_sort_lst = [(x.unsqueeze(0), s) for x, s in zip(probs_sort, seed)]
+        sampled_index = torch.cat(
+            list(
+                map(
+                    lambda x: multinomial_for_single_sample(*x), probs_sort_lst
+                )
+            ), dim=0)
+    else:
+        sampled_index = torch.multinomial(probs_sort, num_samples=1)
+
     batch_next_token_ids = torch.gather(probs_idx, dim=1, index=sampled_index).view(-1)
     return batch_next_token_ids

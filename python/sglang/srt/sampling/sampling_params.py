@@ -34,6 +34,7 @@ class SamplingParams:
         frequency_penalty: float = 0.0,
         presence_penalty: float = 0.0,
         repetition_penalty: float = 1.0,
+        seed: int = 42,
         ignore_eos: bool = False,
         skip_special_tokens: bool = True,
         spaces_between_special_tokens: bool = True,
@@ -48,6 +49,7 @@ class SamplingParams:
         self.frequency_penalty = frequency_penalty
         self.presence_penalty = presence_penalty
         self.repetition_penalty = repetition_penalty
+        self.seed = seed
         self.stop_strs = stop
         if stop_token_ids is None:
             stop_token_ids = []
@@ -94,6 +96,10 @@ class SamplingParams:
             raise ValueError(
                 "repetition_penalty must be in (0, 2], got "
                 f"{self.repetition_penalty}."
+            )
+        if not isinstance(self.seed, int):
+            raise ValueError(
+                f"seed must be int, got {type(self.seed)}"
             )
         if not 0 <= self.min_new_tokens:
             raise ValueError(
@@ -144,6 +150,7 @@ class SamplingParams:
             "top_k": self.top_k,
             "frequency_penalty": self.frequency_penalty,
             "presence_penalty": self.presence_penalty,
+            "seed": self.seed,
             "ignore_eos": self.ignore_eos,
             "regex": self.regex,
         }

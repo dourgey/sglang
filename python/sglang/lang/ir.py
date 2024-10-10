@@ -26,6 +26,7 @@ class SglSamplingParams:
     min_p: float = 0.0
     frequency_penalty: float = 0.0
     presence_penalty: float = 0.0
+    seed: int = None
     ignore_eos: bool = False
     return_logprob: Optional[bool] = None
     logprob_start_len: Optional[int] = (None,)
@@ -49,6 +50,7 @@ class SglSamplingParams:
             self.min_p,
             self.frequency_penalty,
             self.presence_penalty,
+            self.seed,
             self.ignore_eos,
             self.return_logprob,
             self.logprob_start_len,
@@ -124,6 +126,7 @@ class SglSamplingParams:
             "min_p": self.min_p,
             "frequency_penalty": self.frequency_penalty,
             "presence_penalty": self.presence_penalty,
+            "seed": self.seed,
             "ignore_eos": self.ignore_eos,
             "regex": self.regex,
             "json_schema": self.json_schema,
@@ -161,6 +164,7 @@ class SglFunction:
         min_p: float = 0.0,
         frequency_penalty: float = 0.0,
         presence_penalty: float = 0.0,
+        seed: int = None,
         ignore_eos: bool = False,
         return_logprob: Optional[bool] = None,
         logprob_start_len: Optional[int] = None,
@@ -188,6 +192,7 @@ class SglFunction:
             min_p=min_p,
             frequency_penalty=frequency_penalty,
             presence_penalty=presence_penalty,
+            seed=seed,
             ignore_eos=ignore_eos,
             return_logprob=return_logprob,
             logprob_start_len=logprob_start_len,
@@ -210,6 +215,7 @@ class SglFunction:
         min_p: float = 0.0,
         frequency_penalty: float = 0.0,
         presence_penalty: float = 0.0,
+        seed: int = None,
         ignore_eos: bool = False,
         return_logprob: Optional[bool] = None,
         logprob_start_len: Optional[int] = None,
@@ -254,6 +260,7 @@ class SglFunction:
             min_p=min_p,
             frequency_penalty=frequency_penalty,
             presence_penalty=presence_penalty,
+            seed=seed,
             ignore_eos=ignore_eos,
             return_logprob=return_logprob,
             logprob_start_len=logprob_start_len,
@@ -436,6 +443,7 @@ class SglGen(SglExpr):
         min_p: Optional[float] = None,
         frequency_penalty: Optional[float] = None,
         presence_penalty: Optional[float] = None,
+        seed: Optional[int] = None,
         ignore_eos: Optional[bool] = None,
         return_logprob: Optional[bool] = None,
         logprob_start_len: Optional[int] = None,
@@ -459,6 +467,7 @@ class SglGen(SglExpr):
             min_p=min_p,
             frequency_penalty=frequency_penalty,
             presence_penalty=presence_penalty,
+            seed=seed,
             ignore_eos=ignore_eos,
             return_logprob=return_logprob,
             logprob_start_len=logprob_start_len,

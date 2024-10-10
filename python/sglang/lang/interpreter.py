@@ -677,6 +677,7 @@ class StreamExecutor:
             "min_p",
             "frequency_penalty",
             "presence_penalty",
+            "seed",
             "ignore_eos",
             "return_logprob",
             "logprob_start_len",

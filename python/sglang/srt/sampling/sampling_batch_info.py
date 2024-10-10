@@ -19,6 +19,7 @@ class SamplingBatchInfo:
     top_ps: torch.Tensor
     top_ks: torch.Tensor
     min_ps: torch.Tensor
+    seed: List[int]
 
     # Dispatch in CUDA graph
     need_min_p_sampling: bool
@@ -54,9 +55,11 @@ class SamplingBatchInfo:
             min_ps = torch.tensor(
                 [r.sampling_params.min_p for r in reqs], dtype=torch.float
             )
+            seed = [r.sampling_params.seed for r in reqs]
 
         ret = cls(
             temperatures=temperatures,
+            seed=seed,
             top_ps=top_ps,
             top_ks=top_ks,
             min_ps=min_ps,
@@ -133,6 +136,7 @@ class SamplingBatchInfo:
 
         for item in [
             "temperatures",
+            "seed",
             "top_ps",
             "top_ks",
             "min_ps",
@@ -167,6 +171,7 @@ class SamplingBatchInfo:
 
         for item in [
             "temperatures",
+            "seed",
             "top_ps",
             "top_ks",
             "min_ps",

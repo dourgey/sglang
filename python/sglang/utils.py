@@ -17,6 +17,10 @@ from typing import Optional, Union
 import numpy as np
 import requests
 from tqdm import tqdm
+import random
+import torch
+
+from vllm.platforms import current_platform
 
 logger = logging.getLogger(__name__)
 
@@ -294,3 +298,39 @@ def download_and_cache_file(url: str, filename: Optional[str] = None):
             bar.update(len(chunk))
 
     return filename
+
+def is_xpu() -> bool:
+    from importlib.metadata import PackageNotFoundError, version
+    try:
+        is_xpu_flag = "xpu" in version("vllm")
+    except PackageNotFoundError:
+        return False
+    # vllm is not build with xpu
+    if not is_xpu_flag:
+        return False
+    try:
+        import intel_extension_for_pytorch as ipex  # noqa: F401
+        _import_ipex = True
+    except ImportError as e:
+        logger.warning("Import Error for IPEX: %s", e.msg)
+        _import_ipex = False
+    # ipex dependency is not ready
+    if not _import_ipex:
+        logger.warning("not found ipex lib")
+        return False
+    return hasattr(torch, "xpu") and torch.xpu.is_available()
+
+def seed_everything(seed: int) -> None:
+    """
+    Set the seed of each random module.
+
+    Loosely based on: https://github.com/Lightning-AI/pytorch-lightning/blob/2.4.0/src/lightning/fabric/utilities/seed.py#L20
+    """
+    random.seed(seed)
+    np.random.seed(seed)
+
+    if current_platform.is_cuda_alike():
+        torch.cuda.manual_seed_all(seed)
+
+    if is_xpu():
+        torch.xpu.manual_seed_all(seed)
